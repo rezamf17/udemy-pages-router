@@ -1,4 +1,5 @@
 import MeetupList from '../components/meetups/MeetupList';
+import clientPromise from '../lib/mongodb';
 
 const DUMMY_MEETSUPS = [
     {
@@ -30,10 +31,32 @@ function HomePage(props){
 }
 
 export async function getStaticProps() {
-    return {
-        props: {
-            meetups: DUMMY_MEETSUPS
-        }
+    try {
+        const client = await clientPromise;
+        const db = client.db();
+        const meetupsCollection = db.collection('meetups');
+        const meetups = await meetupsCollection.find().toArray();
+        console.log('meetups', meetups);
+        return {
+            props: {
+                meetups: meetups.map((meetup) => ({
+                    id: meetup._id.toString(),
+                    title: meetup.title,
+                    image: meetup.image,
+                    address: meetup.address,
+                    description: meetup.description,
+                }))
+            },
+            revalidate: 1,
+        };
+    } catch (error) {
+        console.error('Failed to fetch meetups:', error);
+        return {
+            props: {
+                meetups: [],
+            },
+            revalidate: 1,
+        };
     }
 }
 
